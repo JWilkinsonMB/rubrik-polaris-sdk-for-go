@@ -196,16 +196,31 @@ type ValidateConfigurationParams[R ValidateConfigurationResult] interface {
 type ValidateConfigurationResult interface {
 	ValidateAzureConfigurationResult
 	Validate() error
+
+	// Warnings returns non-fatal validation warnings, e.g. conditions which
+	// should be surfaced to the caller but which do not prevent the
+	// exocompute configuration from being created.
+	Warnings() []string
 }
 
 // ValidateConfiguration validates the exocompute configuration.
 func ValidateConfiguration[P ValidateConfigurationParams[R], R ValidateConfigurationResult](ctx context.Context, gql *graphql.Client, params P) error {
+	_, err := ValidateConfigurationWithWarnings[P, R](ctx, gql, params)
+	return err
+}
+
+// ValidateConfigurationWithWarnings validates the exocompute configuration and
+// returns any non-fatal warnings produced by the validation in addition to an
+// error indicating a fatal validation failure. Callers, such as the Terraform
+// provider, can use the warnings to inform the user without failing the
+// operation.
+func ValidateConfigurationWithWarnings[P ValidateConfigurationParams[R], R ValidateConfigurationResult](ctx context.Context, gql *graphql.Client, params P) ([]string, error) {
 	gql.Log().Print(log.Trace)
 
 	query, queryParams, _ := params.ValidateQuery()
 	buf, err := gql.Request(ctx, query, queryParams)
 	if err != nil {
-		return graphql.RequestError(query, err)
+		return nil, graphql.RequestError(query, err)
 	}
 
 	var payload struct {
@@ -214,11 +229,11 @@ func ValidateConfiguration[P ValidateConfigurationParams[R], R ValidateConfigura
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(buf, &payload); err != nil {
-		return graphql.UnmarshalError(query, err)
+		return nil, graphql.UnmarshalError(query, err)
 	}
 	if err := payload.Data.Result.Validate(); err != nil {
-		return graphql.ResponseError(query, err)
+		return payload.Data.Result.Warnings(), graphql.ResponseError(query, err)
 	}
 
-	return nil
+	return payload.Data.Result.Warnings(), nil
 }

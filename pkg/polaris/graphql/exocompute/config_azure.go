@@ -167,9 +167,6 @@ func (r ValidateAzureConfigurationResult) Validate() error {
 	if r.ValidationInfo[0].ExocomputePrivateDnsZoneDoesNotExist {
 		strs = append(strs, "exocompute private dns zone does not exist")
 	}
-	if r.ValidationInfo[0].ExocomputePrivateDnsZoneInDifferentSubscription {
-		strs = append(strs, "exocompute private dns zone is in a different subscription than the exocompute vnet")
-	}
 	if r.ValidationInfo[0].ExocomputePrivateDnsZoneInvalid {
 		strs = append(strs, "exocompute private dns zone is invalid: name must be [subzone.]privatelink.<region>.azmk8s.io")
 	}
@@ -232,6 +229,23 @@ func (r ValidateAzureConfigurationResult) Validate() error {
 
 		return fmt.Errorf("multiple configuration errors: %s", str.String()[1:])
 	}
+}
+
+// Warnings returns non-fatal validation warnings for the exocompute
+// configuration. Unlike the conditions checked by Validate, these conditions
+// do not prevent the exocompute configuration from being created, but should
+// still be surfaced to the caller.
+func (r ValidateAzureConfigurationResult) Warnings() []string {
+	if len(r.ValidationInfo) != 1 {
+		return nil
+	}
+
+	var warnings []string
+	if r.ValidationInfo[0].ExocomputePrivateDnsZoneInDifferentSubscription {
+		warnings = append(warnings, "exocompute private dns zone is in a different subscription than the exocompute vnet")
+	}
+
+	return warnings
 }
 
 // DeleteAzureConfigurationParams holds the parameters for an Azure exocompute

@@ -7,7 +7,7 @@
           "hasBlockedSecurityRules":                                  {{ .BlockedSecurityRules }},
           "hasRestrictedAddressRangeOverlap":                         false,
           "isAksCustomPrivateDnsZoneDoesNotExist":                    false,
-          "isAksCustomPrivateDnsZoneInDifferentSubscription":         false,
+          "isAksCustomPrivateDnsZoneInDifferentSubscription":         {{ .DnsZoneInDifferentSubscription }},
           "isAksCustomPrivateDnsZoneInvalid":                         false,
           "isAksCustomPrivateDnsZoneNotLinkedToVnet":                 false,
           "isAksCustomPrivateDnsZonePermissionsGroupNotEnabled":      false,

@@ -154,23 +154,39 @@ func AzureBYOKCluster(region azure.Region) AzureConfigurationFunc {
 // AddAzureConfiguration adds the exocompute configuration to the cloud account
 // with the specified ID. Returns the ID of the added exocompute configuration.
 func (a API) AddAzureConfiguration(ctx context.Context, cloudAccountID uuid.UUID, config AzureConfigurationFunc) (uuid.UUID, error) {
+	configID, _, err := a.addAzureConfiguration(ctx, cloudAccountID, config)
+	return configID, err
+}
+
+// AddAzureConfigurationWithWarnings adds the exocompute configuration to the
+// cloud account with the specified ID. Returns the ID of the added exocompute
+// configuration and any non-fatal validation warnings, e.g. when the AKS
+// custom private DNS zone is in a different subscription than the exocompute
+// vnet. Callers, such as the Terraform provider, can surface these warnings
+// to the user without failing the operation.
+func (a API) AddAzureConfigurationWithWarnings(ctx context.Context, cloudAccountID uuid.UUID, config AzureConfigurationFunc) (uuid.UUID, []string, error) {
+	return a.addAzureConfiguration(ctx, cloudAccountID, config)
+}
+
+func (a API) addAzureConfiguration(ctx context.Context, cloudAccountID uuid.UUID, config AzureConfigurationFunc) (uuid.UUID, []string, error) {
 	a.log.Print(log.Trace)
 
 	exoConfig, err := config(ctx, cloudAccountID)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to parse exocompute configuration: %s", err)
+		return uuid.Nil, nil, fmt.Errorf("failed to parse exocompute configuration: %s", err)
 	}
 
-	if err := exocompute.ValidateConfiguration(ctx, a.client, exoConfig); err != nil {
-		return uuid.Nil, fmt.Errorf("failed to validate exocompute configuration: %s", err)
+	warnings, err := exocompute.ValidateConfigurationWithWarnings(ctx, a.client, exoConfig)
+	if err != nil {
+		return uuid.Nil, warnings, fmt.Errorf("failed to validate exocompute configuration: %s", err)
 	}
 
 	configID, err := exocompute.CreateConfiguration(ctx, a.client, exoConfig)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("failed to create exocompute configuration for cloud account %s: %s", cloudAccountID, err)
+		return uuid.Nil, warnings, fmt.Errorf("failed to create exocompute configuration for cloud account %s: %s", cloudAccountID, err)
 	}
 
-	return configID, nil
+	return configID, warnings, nil
 }
 
 // RemoveAzureConfiguration removes the Azure exocompute configuration with the

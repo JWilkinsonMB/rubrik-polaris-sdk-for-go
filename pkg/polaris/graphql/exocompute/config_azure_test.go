@@ -24,6 +24,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"text/template"
@@ -43,15 +44,17 @@ func TestValidateAzureConfiguration(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name                      string
-		expectedError             string
-		ErrorMessage              string
-		BlockedSecurityRules      bool
-		ClusterSubnetSizeTooSmall bool
-		PodAndClusterSubnetSame   bool
-		PodCidrRangeTooSmall      bool
-		PodSubnetSizeTooSmall     bool
-		SubnetDelegated           bool
+		name                           string
+		expectedError                  string
+		expectedWarnings               []string
+		ErrorMessage                   string
+		BlockedSecurityRules           bool
+		ClusterSubnetSizeTooSmall      bool
+		DnsZoneInDifferentSubscription bool
+		PodAndClusterSubnetSame        bool
+		PodCidrRangeTooSmall           bool
+		PodSubnetSizeTooSmall          bool
+		SubnetDelegated                bool
 	}{{
 		name: "NoError",
 	}, {
@@ -89,6 +92,20 @@ func TestValidateAzureConfiguration(t *testing.T) {
 		PodCidrRangeTooSmall:      true,
 		PodSubnetSizeTooSmall:     true,
 		SubnetDelegated:           true,
+	}, {
+		name: "DnsZoneInDifferentSubscriptionIsAWarningNotAnError",
+		expectedWarnings: []string{
+			"exocompute private dns zone is in a different subscription than the exocompute vnet",
+		},
+		DnsZoneInDifferentSubscription: true,
+	}, {
+		name:          "ValidationErrorWithWarning",
+		expectedError: "subnet is delegated",
+		expectedWarnings: []string{
+			"exocompute private dns zone is in a different subscription than the exocompute vnet",
+		},
+		DnsZoneInDifferentSubscription: true,
+		SubnetDelegated:                true,
 	}}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -99,7 +116,11 @@ func TestValidateAzureConfiguration(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			err = ValidateConfiguration(ctx, graphql.NewTestClient(srv), CreateAzureConfigurationParams{})
+			warnings, err := ValidateConfigurationWithWarnings(ctx, graphql.NewTestClient(srv), CreateAzureConfigurationParams{})
+			if !slices.Equal(warnings, tc.expectedWarnings) {
+				t.Errorf("invalid warnings: %v, expected: %v", warnings, tc.expectedWarnings)
+			}
+
 			if err == nil {
 				if tc.expectedError != "" {
 					t.Fatal("expected validate configuration call to fail")
