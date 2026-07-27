@@ -151,6 +151,26 @@ func AzureBYOKCluster(region azure.Region) AzureConfigurationFunc {
 	}
 }
 
+// ValidateAzureConfiguration validates the exocompute configuration for the
+// cloud account with the specified ID without creating it. Returns any non-fatal
+// warnings produced by the validation. This is suitable for use during a
+// Terraform plan phase to verify that a planned configuration would succeed.
+func (a API) ValidateAzureConfiguration(ctx context.Context, cloudAccountID uuid.UUID, config AzureConfigurationFunc) ([]string, error) {
+	a.log.Print(log.Trace)
+
+	exoConfig, err := config(ctx, cloudAccountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse exocompute configuration: %s", err)
+	}
+
+	warnings, err := exocompute.ValidateConfigurationWithWarnings(ctx, a.client, exoConfig)
+	if err != nil {
+		return warnings, fmt.Errorf("failed to validate exocompute configuration: %s", err)
+	}
+
+	return warnings, nil
+}
+
 // AddAzureConfiguration adds the exocompute configuration to the cloud account
 // with the specified ID. Returns the ID of the added exocompute configuration.
 func (a API) AddAzureConfiguration(ctx context.Context, cloudAccountID uuid.UUID, config AzureConfigurationFunc) (uuid.UUID, error) {
