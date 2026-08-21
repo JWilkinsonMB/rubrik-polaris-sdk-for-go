@@ -77,6 +77,24 @@ var hierarchyObjectQuery = `query SdkGolangHierarchyObject($fid: UUID!, $workloa
             orgId
             projectId
         }
+        ... on GithubRepository {
+            orgId
+        }
+        ... on AzureSqlManagedInstanceServer {
+            azureResourceGroupDetails {
+                azureSubscriptionDetails {
+                    id
+                    name
+                    accountConnectionId
+                    tenantId
+                    cloudType
+                    status
+                    regionSpecs {
+                        region
+                    }
+                }
+            }
+        }
         configuredSlaDomain {
             ... on ClusterSlaDomain {
                 id
@@ -131,6 +149,24 @@ var inventoryRootQuery = `query SdkGolangInventoryRoot($after: String, $filter: 
                 ... on AzureDevOpsRepository {
                     orgId
                     projectId
+                }
+                ... on GithubRepository {
+                    orgId
+                }
+                ... on AzureSqlManagedInstanceServer {
+                    azureResourceGroupDetails {
+                        azureSubscriptionDetails {
+                            id
+                            name
+                            accountConnectionId
+                            tenantId
+                            cloudType
+                            status
+                            regionSpecs {
+                                region
+                            }
+                        }
+                    }
                 }
             }
             count

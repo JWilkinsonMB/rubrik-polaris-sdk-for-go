@@ -32,6 +32,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql"
+	azureregions "github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/graphql/regions/azure"
 	"github.com/rubrikinc/rubrik-polaris-sdk-for-go/pkg/polaris/log"
 )
 
@@ -183,7 +184,7 @@ type Feature struct {
 // InventoryObject is a constraint for types that can be returned from the
 // inventory root query.
 type InventoryObject interface {
-	AWSNativeAccount | AWSNativeEC2Instance | AWSNativeEBSVolume | AWSNativeRDSInstance | AzureNativeSubscription | AzureNativeVirtualMachine | AzureDevOpsOrganization | AzureDevOpsProject | AzureDevOpsRepository
+	AWSNativeAccount | AWSNativeEC2Instance | AWSNativeEBSVolume | AWSNativeRDSInstance | AzureNativeSubscription | AzureNativeVirtualMachine | AzureDevOpsOrganization | AzureDevOpsProject | AzureDevOpsRepository | AzureSQLManagedInstanceServer | GitHubOrganization | GitHubRepository
 	// typeFilter returns the object type filter to use for the inventory root
 	// query. It corresponds to values in the GraphQL Enum HierarchyObjectTypeEnum.
 	typeFilter() ObjectType
@@ -283,6 +284,25 @@ func (AzureDevOpsRepository) typeFilter() ObjectType {
 	return "AZURE_DEVOPS_REPOSITORY"
 }
 
+// GitHubOrganization represents a GitHub organization from the inventory root.
+type GitHubOrganization struct {
+	Object
+}
+
+func (GitHubOrganization) typeFilter() ObjectType {
+	return "GITHUB_ORGANIZATION"
+}
+
+// GitHubRepository represents a GitHub repository from the inventory root.
+type GitHubRepository struct {
+	Object
+	OrgID uuid.UUID `json:"orgId"`
+}
+
+func (GitHubRepository) typeFilter() ObjectType {
+	return "GITHUB_REPOSITORY"
+}
+
 // AzureNativeVirtualMachine represents an Azure native virtual machine from
 // the inventory root.
 type AzureNativeVirtualMachine struct {
@@ -294,6 +314,44 @@ type AzureNativeVirtualMachine struct {
 // from the Go type name (AzureNativeVirtualMachine).
 func (AzureNativeVirtualMachine) typeFilter() ObjectType {
 	return "AzureNativeVm"
+}
+
+// AzureSubscriptionDetails holds the parent Azure subscription details returned
+// for inventory objects that expose them, such as SQL Managed Instance servers.
+type AzureSubscriptionDetails struct {
+	// ID is the native subscription FID.
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+	// CloudAccountID is the RSC cloud account ID of the subscription. This is
+	// the value exposed as subscription_id elsewhere in RSC.
+	CloudAccountID uuid.UUID `json:"accountConnectionId"`
+	// TenantDomain is the Azure tenant domain, e.g. example.onmicrosoft.com.
+	// RSC returns it in a field named tenantId even though it is a domain and
+	// not a UUID.
+	TenantDomain string `json:"tenantId"`
+	// Cloud is the Azure cloud, e.g. AZUREPUBLICCLOUD. It mirrors the azure.Cloud
+	// values but is typed as a string here because importing the graphql/azure
+	// package would create an import cycle (azure -> core -> hierarchy).
+	Cloud       string `json:"cloudType"`
+	Status      string `json:"status"`
+	RegionSpecs []struct {
+		Region azureregions.NativeRegionEnum `json:"region"`
+	} `json:"regionSpecs"`
+}
+
+// AzureSQLManagedInstanceServer represents an Azure SQL Managed Instance server
+// from the inventory root. In addition to the common object fields it exposes
+// the parent subscription details, so callers can filter servers by
+// subscription client-side — the inventory query has no subscription filter.
+type AzureSQLManagedInstanceServer struct {
+	Object
+	ResourceGroup struct {
+		Subscription AzureSubscriptionDetails `json:"azureSubscriptionDetails"`
+	} `json:"azureResourceGroupDetails"`
+}
+
+func (AzureSQLManagedInstanceServer) typeFilter() ObjectType {
+	return "AzureSqlManagedInstanceServer"
 }
 
 // Filter represents a GraphQL Filter input for inventory queries.

@@ -29,6 +29,24 @@ query RubrikPolarisSDKRequest($after: String, $filter: [Filter!], $first: Int, $
                     orgId
                     projectId
                 }
+                ... on GithubRepository {
+                    orgId
+                }
+                ... on AzureSqlManagedInstanceServer {
+                    azureResourceGroupDetails {
+                        azureSubscriptionDetails {
+                            id
+                            name
+                            accountConnectionId
+                            tenantId
+                            cloudType
+                            status
+                            regionSpecs {
+                                region
+                            }
+                        }
+                    }
+                }
             }
             count
             pageInfo {
