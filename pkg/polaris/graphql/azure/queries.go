@@ -157,7 +157,8 @@ var azureNativeResourceGroupsQuery = `query SdkGolangAzureNativeResourceGroups($
             SQL_MI,
             SQL_DB,
             BLOB,
-            POSTGRES_FLEXIBLE_SERVER
+            POSTGRES_FLEXIBLE_SERVER,
+            AZ_CLOUD_DISCOVERY,
         ]
         commonResourceGroupFilters: {
             subscriptionFilter: {
@@ -174,7 +175,9 @@ var azureNativeResourceGroupsQuery = `query SdkGolangAzureNativeResourceGroups($
                 name
                 azureSubscriptionDetails {
                     id
+                    accountConnectionId
                     name
+                    nativeId
                 }
                 slaAssignment
                 logicalPath {
@@ -196,10 +199,51 @@ var azureNativeResourceGroupsQuery = `query SdkGolangAzureNativeResourceGroups($
     }
 }`
 
+// azureNativeResourceGroupsWithFilter GraphQL query
+var azureNativeResourceGroupsWithFilterQuery = `query SdkGolangAzureNativeResourceGroupsWithFilter($after: String, $filters: AzureNativeCommonResourceGroupFilters) {
+    result: azureNativeResourceGroups(
+        after:                      $after,
+        commonResourceGroupFilters: $filters,
+    ) {
+        nodes {
+            id
+            name
+            azureSubscriptionDetails {
+                id
+                accountConnectionId
+                name
+                nativeId
+            }
+            slaAssignment
+            logicalPath {
+                fid
+                name
+                objectType
+            }
+            physicalPath {
+                fid
+                name
+                objectType
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
 // azureNativeSubscriptions GraphQL query
 var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($after: String, $filter: String!) {
   result: azureNativeSubscriptions(
-    azureNativeProtectionFeatures: [VM, SQL_DB, SQL_MI, BLOB]
+    azureNativeProtectionFeatures: [
+      VM,
+      SQL_MI,
+      SQL_DB,
+      BLOB,
+      POSTGRES_FLEXIBLE_SERVER,
+      AZ_CLOUD_DISCOVERY,
+    ]
     after: $after
     subscriptionFilters: { nameSubstringFilter: { nameSubstring: $filter } }
   ) {
@@ -227,6 +271,54 @@ var azureNativeSubscriptionsQuery = `query SdkGolangAzureNativeSubscriptions($af
       hasNextPage
     }
   }
+}`
+
+// azureNativeSubscriptionsWithFilter GraphQL query
+var azureNativeSubscriptionsWithFilterQuery = `query SdkGolangAzureNativeSubscriptionsWithFilter($after: String, $filters: AzureNativeSubscriptionFilters) {
+    result: azureNativeSubscriptions(
+        after:               $after,
+        subscriptionFilters: $filters,
+        azureNativeProtectionFeatures: [
+            VM,
+            SQL_MI,
+            SQL_DB,
+            BLOB,
+            POSTGRES_FLEXIBLE_SERVER,
+            AZ_CLOUD_DISCOVERY,
+        ],
+    ) {
+        nodes {
+            id
+            accountConnectionId
+            azureSubscriptionNativeId
+            name
+            azureSubscriptionStatus
+            slaAssignment
+            configuredSlaDomain {
+                id
+                name
+            }
+            effectiveSlaDomain {
+                id
+                name
+            }
+        }
+        pageInfo {
+            endCursor
+            hasNextPage
+        }
+    }
+}`
+
+// clearCloudNativeSqlServerBackupCredentials GraphQL query
+var clearCloudNativeSqlServerBackupCredentialsQuery = `mutation SdkGolangClearCloudNativeSqlServerBackupCredentials($objectIds: [UUID!]!, $workloadType: WorkloadLevelHierarchy!) {
+    result: clearCloudNativeSqlServerBackupCredentials(input: {
+        objectIds:    $objectIds,
+        workloadType: $workloadType
+    }) {
+        successObjectIds
+        failedObjectIds
+    }
 }`
 
 // deleteAzureCloudAccountWithoutOauth GraphQL query
@@ -273,6 +365,25 @@ var setRubrikCustomerAppForAzureDevopsQuery = `mutation SdkGolangSetRubrikCustom
     clientSecret:  $clientSecret,
     shouldReplace: $shouldReplace,
   })
+}`
+
+// setupCloudNativeSqlServerBackup GraphQL query
+var setupCloudNativeSqlServerBackupQuery = `mutation SdkGolangSetupCloudNativeSqlServerBackup($serverIds: [UUID!], $databaseIds: [UUID!], $adminCredentials: LoginCredentials, $authMechanism: SqlAuthenticationMechanism) {
+    result: setupCloudNativeSqlServerBackup(input: {
+        serverIds:        $serverIds,
+        databaseIds:      $databaseIds,
+        adminCredentials: $adminCredentials,
+        authMechanism:    $authMechanism
+    }) {
+        jobIds {
+            jobId
+            rubrikObjectId
+        }
+        errors {
+            error
+            rubrikObjectId
+        }
+    }
 }`
 
 // startDisableAzureCloudAccountJob GraphQL query
